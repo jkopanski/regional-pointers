@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude
            , FlexibleContexts
+           , MonoLocalBinds
            , TypeOperators #-}
 
 -------------------------------------------------------------------------------
@@ -32,10 +33,9 @@ import qualified Foreign.Storable as FS ( peekElemOff, pokeElemOff
                                         , peekByteOff, pokeByteOff
                                         , peek,        poke
                                         )
-import System.IO                        ( IO )
 
--- from transformers-base:
-import Control.Monad.Base               ( MonadBase )
+-- from transformers:
+import Control.Monad.IO.Class           ( MonadIO )
 
 -- from regions:
 import Control.Monad.Trans.Region       ( AncestorRegion )
@@ -62,7 +62,7 @@ import Foreign.Ptr.Region.Unsafe        ( unsafeWrap, unsafeWrap2, unsafeWrap3 )
 --
 -- Wraps: @Foreign.Storable.'FS.peekElemOff'@.
 peekElemOff :: ( AllocatedPointer pointer, Storable a
-               , pr `AncestorRegion` cr, MonadBase IO cr
+               , pr `AncestorRegion` cr, MonadIO cr
                )
             => pointer a pr -> Int -> cr a
 peekElemOff = unsafeWrap2 FS.peekElemOff
@@ -75,7 +75,7 @@ peekElemOff = unsafeWrap2 FS.peekElemOff
 --
 -- Wraps: @Foreign.Storable.'FS.pokeElemOff'@.
 pokeElemOff :: ( AllocatedPointer pointer, Storable a
-               , pr `AncestorRegion` cr, MonadBase IO cr
+               , pr `AncestorRegion` cr, MonadIO cr
                )
             => pointer a pr -> Int -> a -> cr ()
 pokeElemOff = unsafeWrap3 FS.pokeElemOff
@@ -87,7 +87,7 @@ pokeElemOff = unsafeWrap3 FS.pokeElemOff
 --
 -- Wraps: @Foreign.Storable.'FS.peekByteOff'@.
 peekByteOff :: ( AllocatedPointer pointer, Storable a
-               , pr `AncestorRegion` cr, MonadBase IO cr
+               , pr `AncestorRegion` cr, MonadIO cr
                )
             => pointer b pr -> Int -> cr a
 peekByteOff = unsafeWrap2 FS.peekByteOff
@@ -99,7 +99,7 @@ peekByteOff = unsafeWrap2 FS.peekByteOff
 --
 -- Wraps: @Foreign.Storable.'FS.pokeByteOff'@.
 pokeByteOff :: ( AllocatedPointer pointer, Storable a
-               , pr `AncestorRegion` cr, MonadBase IO cr
+               , pr `AncestorRegion` cr, MonadIO cr
                )
             => pointer b pr -> Int -> a -> cr ()
 pokeByteOff = unsafeWrap3 FS.pokeByteOff
@@ -114,7 +114,7 @@ pokeByteOff = unsafeWrap3 FS.pokeByteOff
 --
 -- Wraps: @Foreign.Storable.'FS.peek'@.
 peek :: ( AllocatedPointer pointer, Storable a
-        , AncestorRegion pr cr, MonadBase IO cr
+        , AncestorRegion pr cr, MonadIO cr
         )
      => pointer a pr -> cr a
 peek = unsafeWrap FS.peek
@@ -124,7 +124,7 @@ peek = unsafeWrap FS.peek
 --
 -- Wraps: @Foreign.Storable.'FS.poke'@.
 poke :: ( AllocatedPointer pointer, Storable a
-        , AncestorRegion pr cr, MonadBase IO cr
+        , AncestorRegion pr cr, MonadIO cr
         )
      => pointer a pr -> a -> cr ()
 poke = unsafeWrap2 FS.poke

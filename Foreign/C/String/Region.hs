@@ -71,20 +71,14 @@ import qualified Foreign.C.String as FCS ( peekCString,     peekCStringLen
                                          , newCWString,      newCWStringLen
                                          , withCWString,     withCWStringLen
                                          )
-#ifdef __HADDOCK__
-import Foreign.C.String                  ( CString,  CStringLen
-                                         , CWString, CWStringLen
-                                         )
-#endif
 import Data.String                       ( String )
-import System.IO                         ( IO )
 
--- from transformers-base:
-import Control.Monad.Base                ( MonadBase, liftBase )
+-- from transformers:
+import Control.Monad.IO.Class            ( MonadIO, liftIO )
 
 -- from regions:
 import Control.Monad.Trans.Region        ( RegionT
-                                         , RegionBaseControl
+                                         , RegionIOControl
                                          , AncestorRegion
                                          , LocalRegion, Local
                                          )
@@ -129,7 +123,7 @@ type RegionalCStringLen pointer r = (RegionalCString pointer r, Int)
 -- Wraps: @Foreign.C.String.'FCS.peekCString'@
 peekCString :: ( AllocatedPointer pointer
                , pr `AncestorRegion` cr
-               , MonadBase IO cr
+               , MonadIO cr
                )
             => RegionalCString pointer pr -> cr String
 peekCString = unsafeWrap FCS.peekCString
@@ -139,7 +133,7 @@ peekCString = unsafeWrap FCS.peekCString
 -- Wraps: @Foreign.C.String.'FCS.peekCStringLen'@.
 peekCStringLen :: ( AllocatedPointer pointer
                   , pr `AncestorRegion` cr
-                  , MonadBase IO cr
+                  , MonadIO cr
                   )
                => RegionalCStringLen pointer pr -> cr String
 peekCStringLen = wrapPeekStringLen FCS.peekCStringLen
@@ -150,8 +144,8 @@ peekCStringLen = wrapPeekStringLen FCS.peekCStringLen
 --
 -- Wraps: @Foreign.C.String.'FCS.newCString'@.
 newCString :: ( region ~ RegionT s pr
-              , RegionBaseControl IO pr
-              , MonadBase IO pr
+              , RegionIOControl pr
+              , MonadIO pr
               )
            => String -> region (RegionalCString RegionalPtr region)
 newCString = wrapMalloc . FCS.newCString
@@ -161,8 +155,8 @@ newCString = wrapMalloc . FCS.newCString
 --
 -- Wraps: @Foreign.C.String.'FCS.newCStringLen'@.
 newCStringLen :: ( region ~ RegionT s pr
-                 , RegionBaseControl IO pr
-                 , MonadBase IO pr
+                 , RegionIOControl pr
+                 , MonadIO pr
                  )
               => String -> region (RegionalCStringLen RegionalPtr region)
 newCStringLen = wrapNewStringLen . FCS.newCStringLen
@@ -176,7 +170,7 @@ newCStringLen = wrapNewStringLen . FCS.newCStringLen
 --   via an exception).
 --
 -- Wraps: @Foreign.C.String.'FCS.withCString'@.
-withCString :: RegionBaseControl IO pr
+withCString :: RegionIOControl pr
             => String
             -> (forall sl. RegionalCString LocalPtr (LocalRegion sl s)
                -> RegionT (Local s) pr a
@@ -191,7 +185,7 @@ withCString = wrapAlloca . FCS.withCString
 --   via an exception).
 --
 -- Wraps: @Foreign.C.String.'FCS.withCStringLen'@.
-withCStringLen :: RegionBaseControl IO pr
+withCStringLen :: RegionIOControl pr
                => String
                -> (forall sl. RegionalCStringLen LocalPtr (LocalRegion sl s)
                   -> RegionT (Local s) pr a
@@ -199,9 +193,9 @@ withCStringLen :: RegionBaseControl IO pr
                -> RegionT s pr a
 withCStringLen = wrapWithStringLen . FCS.withCStringLen
 
--- | Generalizes @Foreign.C.String.'FCS.charIsRepresentable'@ to any 'MonadBase IO'.
-charIsRepresentable :: MonadBase IO m => Char -> m Bool
-charIsRepresentable = liftBase . FCS.charIsRepresentable
+-- | Generalizes @Foreign.C.String.'FCS.charIsRepresentable'@ to any 'MonadIO'.
+charIsRepresentable :: MonadIO m => Char -> m Bool
+charIsRepresentable = liftIO . FCS.charIsRepresentable
 
 
 --------------------------------------------------------------------------------
@@ -213,7 +207,7 @@ charIsRepresentable = liftBase . FCS.charIsRepresentable
 -- Wraps: @Foreign.C.String.'FCS.peekCAString'@.
 peekCAString :: ( AllocatedPointer pointer
                 , pr `AncestorRegion` cr
-                , MonadBase IO cr
+                , MonadIO cr
                 )
              => RegionalCString pointer pr -> cr String
 peekCAString = unsafeWrap FCS.peekCAString
@@ -223,7 +217,7 @@ peekCAString = unsafeWrap FCS.peekCAString
 -- Wraps: @Foreign.C.String.'FCS.peekCAStringLen'@.
 peekCAStringLen :: ( AllocatedPointer pointer
                    , pr `AncestorRegion` cr
-                   , MonadBase IO cr
+                   , MonadIO cr
                    )
                 => RegionalCStringLen pointer pr -> cr String
 peekCAStringLen = wrapPeekStringLen FCS.peekCAStringLen
@@ -234,8 +228,8 @@ peekCAStringLen = wrapPeekStringLen FCS.peekCAStringLen
 --
 -- Wraps: @Foreign.C.String.'FCS.newCAString'@.
 newCAString :: ( region ~ RegionT s pr
-               , RegionBaseControl IO pr
-               , MonadBase IO pr
+               , RegionIOControl pr
+               , MonadIO pr
                )
             => String -> region (RegionalCString RegionalPtr region)
 newCAString = wrapMalloc . FCS.newCAString
@@ -245,8 +239,8 @@ newCAString = wrapMalloc . FCS.newCAString
 --
 -- Wraps: @Foreign.C.String.'FCS.newCAStringLen'@.
 newCAStringLen :: ( region ~ RegionT s pr
-                  , RegionBaseControl IO pr
-                  , MonadBase IO pr
+                  , RegionIOControl pr
+                  , MonadIO pr
                   )
                => String -> region (RegionalCStringLen RegionalPtr region)
 newCAStringLen = wrapNewStringLen . FCS.newCAStringLen
@@ -260,7 +254,7 @@ newCAStringLen = wrapNewStringLen . FCS.newCAStringLen
 -- via an exception).
 --
 -- Wraps: @Foreign.C.String.'FCS.withCAString'@.
-withCAString :: RegionBaseControl IO pr
+withCAString :: RegionIOControl pr
              => String
              -> (forall sl. RegionalCString LocalPtr (LocalRegion sl s)
                 -> RegionT (Local s) pr a
@@ -275,7 +269,7 @@ withCAString = wrapAlloca . FCS.withCAString
 --   via an exception).
 --
 -- Wraps: @Foreign.C.String.'FCS.withCAStringLen'@.
-withCAStringLen :: RegionBaseControl IO pr
+withCAStringLen :: RegionIOControl pr
                 => String
                 -> (forall sl. RegionalCStringLen LocalPtr (LocalRegion sl s)
                    -> RegionT (Local s) pr a
@@ -306,7 +300,7 @@ type RegionalCWStringLen pointer r = (RegionalCWString pointer r, Int)
 -- Wraps: @Foreign.C.String.'FCS.peekCWString'@.
 peekCWString :: ( AllocatedPointer pointer
                 , pr `AncestorRegion` cr
-                , MonadBase IO cr
+                , MonadIO cr
                 )
              => RegionalCWString pointer pr -> cr String
 peekCWString = unsafeWrap FCS.peekCWString
@@ -316,7 +310,7 @@ peekCWString = unsafeWrap FCS.peekCWString
 -- Wraps: @Foreign.C.String.'FCS.peekCWStringLen'@.
 peekCWStringLen :: ( AllocatedPointer pointer
                    , pr `AncestorRegion` cr
-                   , MonadBase IO cr
+                   , MonadIO cr
                    )
                 => RegionalCWStringLen pointer pr -> cr String
 peekCWStringLen = wrapPeekStringLen FCS.peekCWStringLen
@@ -326,7 +320,7 @@ peekCWStringLen = wrapPeekStringLen FCS.peekCWStringLen
 -- The Haskell string may /not/ contain any NUL characters.
 --
 -- Wraps: @Foreign.C.String.'FCS.newCWString'@.
-newCWString :: (region ~ RegionT s pr, RegionBaseControl IO pr)
+newCWString :: (region ~ RegionT s pr, RegionIOControl pr)
             => String -> region (RegionalCWString RegionalPtr region)
 newCWString = wrapMalloc . FCS.newCWString
 
@@ -335,8 +329,8 @@ newCWString = wrapMalloc . FCS.newCWString
 --
 -- Wraps: @Foreign.C.String.'FCS.newCWStringLen'@.
 newCWStringLen :: ( region ~ RegionT s pr
-                  , RegionBaseControl IO pr
-                  , MonadBase IO pr
+                  , RegionIOControl pr
+                  , MonadIO pr
                   )
                => String -> region (RegionalCWStringLen RegionalPtr region)
 newCWStringLen = wrapNewStringLen . FCS.newCWStringLen
@@ -350,7 +344,7 @@ newCWStringLen = wrapNewStringLen . FCS.newCWStringLen
 --   normally or via an exception).
 --
 -- Wraps: @Foreign.C.String.'FCS.withCWString'@.
-withCWString :: RegionBaseControl IO pr
+withCWString :: RegionIOControl pr
              => String
              -> (forall sl. RegionalCWString LocalPtr (LocalRegion sl s)
                 -> RegionT (Local s) pr a
@@ -367,7 +361,7 @@ withCWString = wrapAlloca . FCS.withCWString
 --   normally or via an exception).
 --
 -- Wraps: @Foreign.C.String.'FCS.withCWStringLen'@.
-withCWStringLen :: RegionBaseControl IO pr
+withCWStringLen :: RegionIOControl pr
                 => String
                 -> (forall sl. RegionalCWStringLen LocalPtr (LocalRegion sl s)
                    -> RegionT (Local s) pr a

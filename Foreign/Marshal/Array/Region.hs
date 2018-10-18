@@ -67,14 +67,13 @@ import qualified Foreign.Marshal.Array as FMA ( mallocArray,  mallocArray0
                                               , lengthArray0
                                               , advancePtr
                                               )
-import System.IO                              ( IO )
 
--- from transformers-base:
-import Control.Monad.Base                     ( MonadBase, liftBase )
+-- from transformers:
+import Control.Monad.IO.Class                 ( MonadIO, liftIO )
 
 -- from regions:
 import Control.Monad.Trans.Region             ( RegionT
-                                              , RegionBaseControl
+                                              , RegionIOControl
                                               , AncestorRegion
                                               , LocalRegion, Local
                                               )
@@ -90,11 +89,6 @@ import Foreign.Ptr.Region.Unsafe              ( unsafePtr
                                               , wrapMalloc
                                               )
 
-#ifdef __HADDOCK__
-import Foreign.Marshal.Alloc.Region           ( malloc, alloca )
-import Foreign.Marshal.Utils.Region           ( new, with )
-#endif
-
 
 --------------------------------------------------------------------------------
 -- * Allocation
@@ -103,19 +97,19 @@ import Foreign.Marshal.Utils.Region           ( new, with )
 -- | Allocate storage for the given number of elements of a storable type.
 --
 -- Like 'malloc', but for multiple elements.
-mallocArray :: (region ~ RegionT s pr, RegionBaseControl IO pr, Storable a)
+mallocArray :: (region ~ RegionT s pr, RegionIOControl pr, Storable a)
             => Int -> region (RegionalPtr a region)
 mallocArray = wrapMalloc . FMA.mallocArray
 
 -- | Like 'mallocArray', but add an extra position to hold a special termination
 -- element.
-mallocArray0 :: (region ~ RegionT s pr, RegionBaseControl IO pr, Storable a)
+mallocArray0 :: (region ~ RegionT s pr, RegionIOControl pr, Storable a)
              => Int -> region (RegionalPtr a region)
 mallocArray0 = wrapMalloc . FMA.mallocArray0
 
 -- | Temporarily allocate space for the given number of elements (like 'alloca',
 -- but for multiple elements).
-allocaArray :: (Storable a, RegionBaseControl IO pr)
+allocaArray :: (Storable a, RegionIOControl pr)
             => Int
             -> (forall sl. LocalPtr a (LocalRegion sl s)
                -> RegionT (Local s) pr b)
@@ -124,7 +118,7 @@ allocaArray = wrapAlloca . FMA.allocaArray
 
 -- | Like 'allocaArray', but add an extra position to hold a special termination
 -- element.
-allocaArray0 :: (Storable a, RegionBaseControl IO pr)
+allocaArray0 :: (Storable a, RegionIOControl pr)
              => Int
              -> (forall sl. LocalPtr a (LocalRegion sl s)
                 -> RegionT (Local s) pr b)
@@ -148,7 +142,7 @@ allocaArray0 = wrapAlloca . FMA.allocaArray0
 --
 -- Wraps: @Foreign.Marshal.Array.'FMA.peekArray'@.
 peekArray :: ( AllocatedPointer pointer, Storable a
-             , pr `AncestorRegion` cr, MonadBase IO cr
+             , pr `AncestorRegion` cr, MonadIO cr
              )
           => Int -> pointer a pr -> cr [a]
 peekArray =  unsafeWrap2flp FMA.peekArray
@@ -157,7 +151,7 @@ peekArray =  unsafeWrap2flp FMA.peekArray
 --
 -- Wraps: @Foreign.Marshal.Array.'FMA.peekArray0'@.
 peekArray0 :: ( AllocatedPointer pointer, Storable a, Eq a
-              , pr `AncestorRegion` cr, MonadBase IO cr
+              , pr `AncestorRegion` cr, MonadIO cr
               )
            => a -> pointer a pr -> cr [a]
 peekArray0 = unsafeWrap2flp FMA.peekArray0
@@ -166,7 +160,7 @@ peekArray0 = unsafeWrap2flp FMA.peekArray0
 --
 -- Wraps: @Foreign.Marshal.Array.'FMA.pokeArray'@.
 pokeArray :: ( AllocatedPointer pointer, Storable a
-             , pr `AncestorRegion` cr, MonadBase IO cr
+             , pr `AncestorRegion` cr, MonadIO cr
              )
           => pointer a pr -> [a] -> cr ()
 pokeArray = unsafeWrap2 FMA.pokeArray
@@ -176,10 +170,10 @@ pokeArray = unsafeWrap2 FMA.pokeArray
 --
 -- Wraps: @Foreign.Marshal.Array.'FMA.pokeArray0'@.
 pokeArray0 :: ( AllocatedPointer pointer, Storable a
-              , pr `AncestorRegion` cr, MonadBase IO cr
+              , pr `AncestorRegion` cr, MonadIO cr
               )
            => a -> pointer a pr -> [a] -> cr ()
-pokeArray0 m rp xs = liftBase $ FMA.pokeArray0 m (unsafePtr rp) xs
+pokeArray0 m rp xs = liftIO $ FMA.pokeArray0 m (unsafePtr rp) xs
 
 
 --------------------------------------------------------------------------------
@@ -190,20 +184,20 @@ pokeArray0 m rp xs = liftBase $ FMA.pokeArray0 m (unsafePtr rp) xs
 -- sequence of storable values.
 --
 -- Like 'new', but for multiple elements.
-newArray :: (region ~ RegionT s pr, RegionBaseControl IO pr, Storable a)
+newArray :: (region ~ RegionT s pr, RegionIOControl pr, Storable a)
          => [a] -> region (RegionalPtr a region)
 newArray = wrapMalloc . FMA.newArray
 
 -- | Write a list of storable elements into a newly allocated, consecutive
 -- sequence of storable values, where the end is fixed by the given end marker.
-newArray0 :: (region ~ RegionT s pr, RegionBaseControl IO pr, Storable a)
+newArray0 :: (region ~ RegionT s pr, RegionIOControl pr, Storable a)
           => a -> [a] -> region (RegionalPtr a region)
 newArray0 marker vals = wrapMalloc (FMA.newArray0 marker vals)
 
 -- | Temporarily store a list of storable values in memory.
 --
 -- Like 'with', but for multiple elements.
-withArray :: (Storable a, RegionBaseControl IO pr)
+withArray :: (Storable a, RegionIOControl pr)
           => [a]
           -> (forall sl. LocalPtr a (LocalRegion sl s)
              -> RegionT (Local s) pr b)
@@ -211,7 +205,7 @@ withArray :: (Storable a, RegionBaseControl IO pr)
 withArray = wrapAlloca . FMA.withArray
 
 -- | Like 'withArray', but a terminator indicates where the array ends.
-withArray0 :: (Storable a, RegionBaseControl IO pr)
+withArray0 :: (Storable a, RegionIOControl pr)
            => a
            -> [a]
            -> (forall sl. LocalPtr a (LocalRegion sl s)
@@ -222,7 +216,7 @@ withArray0 marker vals = wrapAlloca (FMA.withArray0 marker vals)
 -- | Like 'withArray', but the action gets the number of values as an additional
 -- parameter.
 withArrayLen
-  :: (Storable a, RegionBaseControl IO pr)
+  :: (Storable a, RegionIOControl pr)
   => [a]
   -> (forall sl. Int -> LocalPtr a (LocalRegion sl s)
      -> RegionT (Local s) pr b)
@@ -231,7 +225,7 @@ withArrayLen = wrapAlloca2 . FMA.withArrayLen
 
 -- | Like 'withArrayLen', but a terminator indicates where the array ends.
 withArrayLen0
-  :: (Storable a, RegionBaseControl IO pr)
+  :: (Storable a, RegionIOControl pr)
   => a
   -> [a]
   -> (forall sl. Int -> LocalPtr a (LocalRegion sl s)
@@ -253,13 +247,13 @@ copyArray :: ( AllocatedPointer pointer1
              , Storable a
              , pr1 `AncestorRegion` cr
              , pr2 `AncestorRegion` cr
-             , MonadBase IO cr
+             , MonadIO cr
              )
           => pointer1 a pr1 -- ^ Destination
           -> pointer2 a pr2 -- ^ Source
           -> Int            -- ^ Number of /elements/ to copy.
           -> cr ()
-copyArray pointer1 pointer2 = liftBase . FMA.copyArray (unsafePtr pointer1)
+copyArray pointer1 pointer2 = liftIO . FMA.copyArray (unsafePtr pointer1)
                                                        (unsafePtr pointer2)
 
 -- | Copy the given number of elements from the second array (source) into the
@@ -271,13 +265,13 @@ moveArray :: ( AllocatedPointer pointer1
              , Storable a
              , pr1 `AncestorRegion` cr
              , pr2 `AncestorRegion` cr
-             , MonadBase IO cr
+             , MonadIO cr
              )
           => pointer1 a pr1 -- ^ Destination
           -> pointer2 a pr2 -- ^ Source
           -> Int            -- ^ Number of /elements/ to move.
           -> cr ()
-moveArray pointer1 pointer2 = liftBase . FMA.moveArray (unsafePtr pointer1)
+moveArray pointer1 pointer2 = liftIO . FMA.moveArray (unsafePtr pointer1)
                                                        (unsafePtr pointer2)
 
 
@@ -289,7 +283,7 @@ moveArray pointer1 pointer2 = liftBase . FMA.moveArray (unsafePtr pointer1)
 --
 -- Wraps: @Foreign.Marshal.Array.'FMA.lengthArray0'@.
 lengthArray0 :: ( AllocatedPointer pointer, Storable a, Eq a
-                , pr `AncestorRegion` cr, MonadBase IO cr
+                , pr `AncestorRegion` cr, MonadIO cr
                 )
              => a -> pointer a pr -> cr Int
 lengthArray0 = unsafeWrap2flp FMA.lengthArray0

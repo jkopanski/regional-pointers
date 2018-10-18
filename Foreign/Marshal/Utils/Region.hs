@@ -47,7 +47,6 @@ module Foreign.Marshal.Utils.Region
 --------------------------------------------------------------------------------
 
 -- from base:
-import System.IO                              ( IO )
 import Control.Category                       ( (.) )
 import qualified Foreign.Marshal.Utils as FMU ( with,      new
                                               , fromBool,  toBool
@@ -55,24 +54,18 @@ import qualified Foreign.Marshal.Utils as FMU ( with,      new
                                               , copyBytes, moveBytes
                                               )
 import Foreign.Storable                       ( Storable )
-
-#ifdef __HADDOCK__
-import Foreign.Storable                       ( sizeOf )
-import qualified Foreign.Marshal.Utils as FMU ( maybeNew, maybeWith, maybePeek )
-#endif
-
 import Data.Int                               ( Int )
 import Data.Maybe                             ( Maybe(Nothing, Just) )
 import Data.Functor                           ( (<$>) )
 import Control.Applicative                    ( Applicative, pure )
 import Control.Monad                          ( Monad, return )
 
--- from transformers-base:
-import Control.Monad.Base                     ( MonadBase, liftBase )
+-- from transformers:
+import Control.Monad.IO.Class                 ( MonadIO, liftIO )
 
 -- from regions:
 import Control.Monad.Trans.Region             ( RegionT
-                                              , RegionBaseControl
+                                              , RegionIOControl
                                               , AncestorRegion
                                               , RootRegion
                                               , LocalRegion, Local
@@ -103,7 +96,7 @@ import Foreign.Ptr.Region.Unsafe              ( unsafePtr
 -- exception).
 --
 -- This provides a safer replacement for @Foreign.Marshal.Utils.'FMU.with'@.
-with :: (Storable a, RegionBaseControl IO pr)
+with :: (Storable a, RegionIOControl pr)
      => a -> (forall sl. LocalPtr a (LocalRegion sl s)
              -> RegionT (Local s) pr b) -- ^
      -> RegionT s pr b
@@ -114,7 +107,7 @@ with = wrapAlloca . FMU.with
 -- 'sizeOf' method from the instance of 'Storable' for the appropriate type.
 --
 -- This provides a safer replacement for @Foreign.Marshal.Utils.'FMU.new'@.
-new :: (region ~ RegionT s pr, RegionBaseControl IO pr, Storable a)
+new :: (region ~ RegionT s pr, RegionIOControl pr, Storable a)
     => a -> region (RegionalPtr a region)
 new = wrapMalloc . FMU.new
 
@@ -173,13 +166,13 @@ copyBytes :: ( AllocatedPointer pointer1
              , AllocatedPointer pointer2
              , pr1 `AncestorRegion` cr
              , pr2 `AncestorRegion` cr
-             , MonadBase IO cr
+             , MonadIO cr
              )
           => pointer1 a pr1 -- ^ Destination
           -> pointer2 a pr2 -- ^ Source
           -> Int            -- ^ Number of bytes to copy
           -> cr ()
-copyBytes pointer1 pointer2 = liftBase . FMU.copyBytes (unsafePtr pointer1)
+copyBytes pointer1 pointer2 = liftIO . FMU.copyBytes (unsafePtr pointer1)
                                                        (unsafePtr pointer2)
 
 -- | Copies the given number of bytes from the second area (source) into the
@@ -190,11 +183,11 @@ moveBytes :: ( AllocatedPointer pointer1
              , AllocatedPointer pointer2
              , pr1 `AncestorRegion` cr
              , pr2 `AncestorRegion` cr
-             , MonadBase IO cr
+             , MonadIO cr
              )
           => pointer1 a pr1 -- ^ Destination
           -> pointer2 a pr2 -- ^ Source
           -> Int            -- ^ Number of bytes to move
           -> cr ()
-moveBytes pointer1 pointer2 = liftBase . FMU.moveBytes (unsafePtr pointer1)
+moveBytes pointer1 pointer2 = liftIO . FMU.moveBytes (unsafePtr pointer1)
                                                        (unsafePtr pointer2)
